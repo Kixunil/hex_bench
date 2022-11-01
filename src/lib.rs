@@ -25,6 +25,21 @@ fn byte_to_hex_digits(byte: u8) -> [u8; 2] {
     [HEX[usize::from(byte.wrapping_shr(4))], HEX[usize::from(byte & 0x0F)]]
 }
 
+pub struct HexManualNoBuf<const N: usize>(pub [u8; N]);
+
+impl<const N: usize> fmt::Display for HexManualNoBuf<N> where [(); N * 2]: Sized {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::fmt::Write;
+
+        for b in &self.0 {
+            let digits = byte_to_hex_digits(*b);
+            f.write_char(digits[0] as char)?;
+            f.write_char(digits[1] as char)?;
+        }
+        Ok(())
+    }
+}
+
 pub struct HexWithBuf<const N: usize>(pub [u8; N]);
 
 impl<const N: usize> fmt::Display for HexWithBuf<N> where [(); N * 2]: Sized {
@@ -118,12 +133,15 @@ mod tests {
                     let b = HexWithBuf(array).to_string();
                     let c = UnsafeHex(array).to_string();
                     let d = MaybeUninitHex(array).to_string();
+                    let e = HexManualNoBuf(array).to_string();
                     assert_eq!(a, b, "a");
                     assert_eq!(b, c, "b");
                     assert_eq!(c, d, "c");
+                    assert_eq!(d, e, "e");
                 }
 
                 measure!(trivial, HexTrivial($array));
+                measure!(manual_no_buf, HexManualNoBuf($array));
                 measure!(with_buf, HexWithBuf($array));
                 measure!(with_unsafe, UnsafeHex($array));
                 measure!(maybe_uninit, MaybeUninitHex($array));
